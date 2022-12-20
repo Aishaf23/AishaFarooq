@@ -1,0 +1,72 @@
+version: "3.7"
+
+services:
+  mysql:
+    image: mysql:8.0.21
+    command:
+      [
+        "--character-set-server=utf8mb4",
+        "--collation-server=utf8mb4_unicode_ci",
+        "--default-authentication-plugin=mysql_native_password",
+      ]
+    restart: always
+    environment:
+      - MYSQL_ROOT_HOST=%
+      - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+      - MYSQL_DATABASE=react_php
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=test
+      - MYSQL_ROOT_PASSWORD=test
+    ports:
+      - "3306:3306"
+    volumes:
+      - dbdata:/var/lib/mysql
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./mysql/my.cnf:/etc/mysql/my.cnf
+    networks:
+      - react-network
+
+  backend:
+    image: webdevops/php-nginx:8.0-alpine
+    restart: always
+    depends_on:
+      - mysql
+    links:
+      - mysql
+    ports:
+      - "8080:80"
+      #- "443:443"
+      #- "9000:9000"
+    volumes:
+      - "./backend:/app"
+    networks:
+      - react-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    command: npm run start
+    tty: true
+    restart: always
+    depends_on:
+      - mysql
+      - backend
+    links:
+      - mysql
+      - backend
+    ports:
+      - "3000:3000"
+    volumes:
+      - "./frontend:/app"
+      - /app/node_modules
+    networks:
+      - react-network
+
+volumes:
+  dbdata:
+
+networks:
+  react-network:
+    driver: "bridge"
+  default:
